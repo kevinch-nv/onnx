@@ -65,8 +65,8 @@ reductions on each device.
 
 ### Unary elementwise ops
 
-List of operations: _Abs, Acos, Acosh, Asin, Asinh, Atan, Atanh, Cast, Ceil, Cos, Cosh, Dropout, Erf, Exp, Floor, Identity, IsInf, IsNaN, Log, Max, Min, Neg, Not, Reciprocal, Round, Sigmoid, Sign, Sin, Sinh, Tan, Tanh,
-ConstantOfShape_.
+List of operations:
+_Abs, Acos, Acosh, Asin, Asinh, Atan, Atanh, Cast, Ceil, Cos, Cosh, Dropout, Erf, Exp, Floor, Identity, IsInf, IsNaN, Log, Max, Min, Neg, Not, Reciprocal, Round, Sigmoid, Sign, Sin, Sinh, Tan, Tanh, ConstantOfShape_.
 
 **Constraints on input sharding**
 * No constraints on input sharding.
@@ -76,14 +76,22 @@ ConstantOfShape_.
 
 ### Broadcast n-ary elementwise ops
 
-List of operations: _Add, And, BitShift, BitwiseAnd, BitwiseNot, BitwiseOr, BitwiseXor, Equal, Greater, Less, Mod, Mul, Or, Pow, Sub, Sum, Where, Xor_.
+List of operations:
+_Add, And, BitShift, BitwiseAnd, BitwiseNot, BitwiseOr, BitwiseXor, Equal, Greater, Less, Mod, Mul, Or, Pow, Sub, Sum, Where, Xor_.
 
 **Constraints on input sharding**
 * For any non-broadcast axis, the sharding spec of the two (or more) inputs must be identical
 * Any broadcast axis of size 1 (in the unsharded original tensor) must be replicated across all devices that participate in the parallel computation (that is, all devices identified in the node's sharding spec).
 
 **Inference of output sharding**
-* The sharding spec for
+* The sharding spec for any axes of the output is the same as the sharding spec for the axes of the
+corresponding input axes in the case of non-broadcast. In the case of broadcast, the output axes
+derives the sharding spec from the corresponding input axes with a size other than 1, if any.
+In the special case where all corresponding input axes have a size of 1, the output axis inherits
+the same sharding (that is, replicated across all devices of the node op).
+
+_Note_: The above can be generalized, but the generalization is hard to describe in words.
+TODO: either add example figures or code to describe more complex scenarios.
 
 ### Reduction ops
 
@@ -102,3 +110,14 @@ first option).
 
 ### MatMul-like ops
 
+List of operations: MatMul, Gemm, quantized variations of these ops, special cases of EinSum
+
+The constraints for these ops follow analogous cases above. Consider the simple case of matrix multiplication
+of two matrices of dimensions `[M, K]` and `[K, N]` producing an output matrix of dimension `[M, N]`.
+Axis 0 of the first input (with value `M`) is conceptually broadcast to the second input.
+Hence, its constraints and handling are similar to the treatment of broadcast axes for n-ary
+elementwise ops.
+Axis 1 of the second input (with value `N`) is also handled similarly.
+
+The axes with size value `K` represent reduction axes. The corresponding two axes must have
+compatible sharding.
