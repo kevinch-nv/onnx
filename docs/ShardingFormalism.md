@@ -17,9 +17,10 @@ This too may involve the use of communication collective ops.
 **Validity of a sharding spec**:
 Note that not all input sharding specs make sense.
 For example, consider the addition operator `Add(A,B)`, where both inputs are
-two dimensional tensors of shapes `[32, 1024]`. Sharding the first input along
-axis 0 and the second input along axis 1 does not make sense. In fact, we
-expect both inputs to be sharded the same way. 
+two dimensional tensors of shapes `[32, 1024]`. Sharding the first input between
+two devices along axis 0 and the second input between the same two devices
+along axis 1 does not make sense. In fact, we typically expect both inputs to be
+sharded the same way. 
 
 A sharding-checker to check if a given input sharding spec makes sense would be
 useful and we recommend building one. The correctness requirements, however, vary from
@@ -43,15 +44,19 @@ specs that it supports.
 A validity checker can be extended to automatically infer some missing elements of a sharding
 spec, as we outline below.
 
-If no input sharding spec is provided for a node's input X, it is assumed to be the same as
+* If no input sharding spec is provided for a node's input X, it is assumed to be the same as
 the sharding spec specified for X at the node that produces the value X.
-If X is a model input, then X is assumed to be unsharded.
-(TODO: should we provide a way for users to provide sharding specs for model inputs? It
-could be useful generalization at some point.)
+* If X is a model input, then X is assumed to be unsharded.
 
 If no output sharding spec is provided for a node's output, it is inferred from the node's
 input sharding spec and the node's operation. In general, this may vary from operator to
 operator. The inference scheme is outlined for a few core groups of operators below.
+
+**Extensions**:
+Currently, the sharding spec does not allow a way of specifying a sharding for the model
+inputs. Sharded model inputs could be useful in an execution setting where the model input
+already exists in sharded form, making it easier to compose sharded execution.
+Extensions to the sharding spec to enable this is future work.
 
 ## Restrictions on Sharding Specs
 
@@ -121,3 +126,18 @@ Axis 1 of the second input (with value `N`) is also handled similarly.
 
 The axes with size value `K` represent reduction axes. The corresponding two axes must have
 compatible sharding.
+
+### Pooling and Convolution ops
+
+List of operations:
+_AveragePool, GlobalAveragePool, GlobalLpPool, GlobalMaxPool, LpPool, MaxPool, MaxRoiPool,_
+_Conv, ConvInteger, ConvTranspose, DeformConv,_
+_InstanceNorm, LpNormalization, LayerNormalization_ 
+
+### Unsupported ops
+
+The following ops are not supported in this version:
+
+* Operations on sequences and optional values.
+* Control-flow ops, such as _If, Loop, Scan_.
+* _GRU, LSTM, RNN, DFT, STFT, MelWeightMatrix, TfidVectorizer_
